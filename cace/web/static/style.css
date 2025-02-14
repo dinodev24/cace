@@ -1,6 +1,5 @@
 table {
   border-collapse: collapse;
-  margin: 25px 0;
   font-size: 18px;
   text-align: left;
 }
@@ -14,4 +13,14 @@ table th {
 }
 progress {
   width: 300px;
+}
+.tab {
+  overflow: hidden;
+}
+.tabcontent {
+  float: left;
+  padding: 0px 12px;
+}
+.tablinks {
+  margin-right: 25px;
 }
