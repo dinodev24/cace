@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request, Response
 from .parameter import ParameterManager
 
-import queue
+import argparse
 import jinja2
 import json
-import os
+import logging
 import mpld3
+import os
+import queue
 
-# TODO: These should be options on the web interface
 parameter_manager = ParameterManager(max_runs=None, run_path=None, jobs=None)
-parameter_manager.find_datasheet(os.getcwd())
+parameter_manager.find_datasheet(os.getcwd(), False)
 paramkey_paramdisplay = {
     i: j.get('display', i)
     for i, j in parameter_manager.datasheet['parameters'].items()
@@ -21,7 +22,6 @@ paramdisplay_paramkey = {
 
 any_queue = queue.Queue()
 figures = {}
-
 app = Flask(__name__, template_folder='web', static_folder='web/static')
 
 PROGRESS_TEMPLATE = jinja2.Template(
@@ -52,7 +52,7 @@ PROGRESS_TEMPLATE = jinja2.Template(
 </table>
 <br>
 <button id="simresultsbtn" onclick="openTab(event, 'Results')" disabled>Simulation Results</button>
-<button onclick="sendData({ 'task': 'cancel_sims' });">Cancel Simulations</button>
+<button id="cancelbtn" onclick="sendData({ 'task': 'cancel_sims' });">Cancel Simulations</button>
 <br>
 <br>
 """
@@ -117,11 +117,27 @@ def homepage():
 
 @app.route('/runsim', methods=['POST'])
 def runsim():
-    params = json.loads(request.get_data())['selected_params']
+    rd = json.loads(request.get_data())
+    print(rd)
+    if rd['max_runs'] == '':
+        rd['max_runs'] = None
+    if rd['run_path'] == '':
+        rd['run_path'] = None
+    if rd['jobs'] == '':
+        rd['jobs'] = None
+    if rd['netlist_source'] == '':
+        rd['netlist_source'] = 'best'
+    if rd['parallel_parameters'] == '':
+        rd['parallel_parameters'] = 4
+    params = rd['selected_params']
+    parameter_manager.max_runs = rd['max_runs']
+    parameter_manager.run_path = rd['run_path']
+    parameter_manager.jobs = rd['jobs']
 
     if len(params) == 0:
         return '', 200
 
+    parameter_manager.prepare_run_dir()
     for pname in params:
         parameter_manager.queue_parameter(
             pname=pname,
@@ -145,14 +161,16 @@ def runsim():
             ),
         )
 
-    # TODO: These should be options on the web interface
-    parameter_manager.set_runtime_options('force', False)
-    parameter_manager.set_runtime_options('noplot', False)
-    parameter_manager.set_runtime_options('nosim', False)
-    parameter_manager.set_runtime_options('sequential', False)
-    parameter_manager.set_runtime_options('netlist_source', 'best')
-    parameter_manager.set_runtime_options('parallel_parameters', 4)
-
+    parameter_manager.set_runtime_options('force', rd['force'])
+    parameter_manager.set_runtime_options('noplot', rd['noplot'])
+    parameter_manager.set_runtime_options('nosim', rd['nosim'])
+    parameter_manager.set_runtime_options('sequential', rd['sequential'])
+    parameter_manager.set_runtime_options(
+        'netlist_source', rd['netlist_source']
+    )
+    parameter_manager.set_runtime_options(
+        'parallel_parameters', rd['parallel_parameters']
+    )
     parameter_manager.run_parameters_async()
     any_queue.put(
         {'task': 'progress', 'html': PROGRESS_TEMPLATE.render(params=params)}
@@ -240,13 +258,22 @@ def simresults():
 
             total += lengths[i]
 
+    divs.append('<br>')
     for pname in figures.keys():
-        divs.append(f'<h2>Figures for {paramkey_paramdisplay[pname]}</h2>')
+        divs.append(
+            f'<details>\n<summary>Figures for {paramkey_paramdisplay[pname]}</summary>'
+        )
         for figure in figures[pname]:
             fig = figures[pname][figure].figure
             fig.set_tight_layout(True)
             fig.set_size_inches(fig.get_size_inches() * 1.25)
-            divs.append(mpld3.fig_to_html(fig))
+            divs.append(
+                mpld3.fig_to_html(
+                    fig, include_libraries=False, template_type='simple'
+                )
+            )
+
+        divs.append('</details>\n<br>')
     print(divs)
     any_queue.put(
         {
@@ -259,4 +286,8 @@ def simresults():
 
 
 def web():
-    app.run(debug=True)
+    host = 'localhost'
+    port = 5000
+    print('Open the CACE web interface at: http://' + host + ':' + str(port))
+
+    app.run(debug=False, host=host, port=port, use_reloader=False)

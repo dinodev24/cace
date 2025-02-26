@@ -3,8 +3,7 @@ table {
   font-size: 18px;
   text-align: left;
 }
-table th,
-table td {
+table th, table td {
   padding: 8px;
   border: 1px solid #ddd;
 }
@@ -23,4 +22,9 @@ progress {
 }
 .tablinks {
   margin-right: 25px;
+}
+details {
+  border: 1px solid #000000;
+  border-radius: 5px;
+  padding: 5px;
 }

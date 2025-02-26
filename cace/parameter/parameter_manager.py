@@ -114,7 +114,7 @@ class ParameterManager:
 
     ### datasheet functions ###
 
-    def load_datasheet(self, datasheet_path):
+    def load_datasheet(self, datasheet_path, init_run_dir=True):
         """
         Tries to load a datasheet from the given path.
         YAML is preferred over text format.
@@ -174,11 +174,12 @@ class ParameterManager:
         self.set_default_paths()
 
         # Create a new run dir for logs
-        self.prepare_run_dir()
+        if init_run_dir:
+            self.prepare_run_dir()
 
         return 0
 
-    def find_datasheet(self, search_dir):
+    def find_datasheet(self, search_dir, init_run_dir=True):
         """
         Check the search_dir directory and determine if there
         is a .yaml or .txt file with the name of the directory, which
@@ -198,7 +199,7 @@ class ParameterManager:
                 if fileext == '.yaml':
                     if basename == dirname:
                         info(f"Loading datasheet from '{item}'.")
-                        return self.load_datasheet(item)
+                        return self.load_datasheet(item, init_run_dir)
 
             elif os.path.isdir(item):
                 subdirlist = os.listdir(item)
@@ -210,7 +211,7 @@ class ParameterManager:
                         if fileext == '.yaml':
                             if basename == dirname:
                                 info(f"Loading datasheet from '{subitemref}'.")
-                                return self.load_datasheet(subitemref)
+                                return self.load_datasheet(subitemref, init_run_dir)
 
         info('No datasheet found in local project (YAML file).')
         return 1
