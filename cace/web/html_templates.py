@@ -1,7 +1,7 @@
 import jinja2
 
 PROGRESS_TEMPLATE = jinja2.Template(
-"""
+    """
 <table id="progress_table">
   <thead>
     <tr>
@@ -15,10 +15,12 @@ PROGRESS_TEMPLATE = jinja2.Template(
     <tr>
       <td>{{ param }}</td>
       <td>
-        <progress id="{{ param }}" value="0" max="100"></progress>
+        <div class="progress" id="{{ param }}" role="progressbar" aria-valuenow="0" aria-valuemax="0">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+        </div>
       </td>
       <td>
-        <button type="button" class="btn btn-danger" id="{{ param }}cancelbtn" onclick="cancel_sim('{{ param }}');">Cancel</button>
+        <button type="button" class="btn btn-outline-danger" id="{{ param }}cancelbtn" onclick="cancel_sim('{{ param }}');">Cancel</button>
       </td>
     </tr>
     {% endfor %}
@@ -39,7 +41,7 @@ PROGRESS_TEMPLATE = jinja2.Template(
 )
 
 RESULTS_SUMMARY_TEMPLATE = jinja2.Template(
-"""
+    """
 <table>
   <thead>
     <tr>
@@ -76,7 +78,7 @@ RESULTS_SUMMARY_TEMPLATE = jinja2.Template(
 )
 
 RESULTS_PLOTS_TEMPLATE = jinja2.Template(
-"""
+    """
 {% for div in divs %}
 {{ div | safe }}
 {% endfor %}
@@ -84,7 +86,7 @@ RESULTS_PLOTS_TEMPLATE = jinja2.Template(
 )
 
 HISTORY_TEMPLATE = jinja2.Template(
-"""
+    """
 <button type="button" class="btn btn-secondary" onclick="refresh_history()">Refresh</button>
 <br />
 <br />
@@ -94,13 +96,21 @@ HISTORY_TEMPLATE = jinja2.Template(
     <details id="{{ runs[i] }}_details">
       <summary>{{ runs[i] }}</summary>
       <div class="comp_btn_holder" id="{{ runs[i] }}_compare_holder">
-        <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')">Compare</button>
+        <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')"><i class="bi bi-arrow-left-right icon-lg"></i> Compare</button>
       </div>
       <div class="small_table">{{ results[i] | safe }}</div>
     </details>
     {% endfor %}
     <br />
   </div>
+</div>
+"""
+)
+
+DANGER_ALERT_TEMPLATE = jinja2.Template(
+    """
+<div class="alert alert-danger" role="alert">
+  <i class="bi bi-exclamation-octagon icon-lg"></i>{{ text }}
 </div>
 """
 )

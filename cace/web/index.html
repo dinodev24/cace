@@ -4,47 +4,77 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="static/css/style.css" />
     <link rel="stylesheet" href="static/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="static/css/bootstrap-icons.min.css" />
     <script src="static/js/d3.v5.min.js"></script>
     <script src="static/js/mpld3.v0.5.10.min.js"></script>
     <script src="static/js/bootstrap.bundle.min.js"></script>
     <title>CACE Web Interface</title>
   </head>
   <body>
-    <div class="topnav">
-      <button type="button" class="btn btn-primary" onclick="window.location.href=window.location.origin">Home</button>
-      <button type="button" class="btn btn-secondary" onclick="openTab(event, 'Select')" id="SelectTab">Select</button>
-      <button type="button" class="btn btn-secondary" onclick="openTab(event, 'Progress')" id="ProgressTab" disabled>Progress</button>
-      <button type="button" class="btn btn-secondary" onclick="openTab(event, 'Results')" id="ResultsTab" disabled>Results</button>
-      <button type="button" class="btn btn-secondary right-align" onclick="openTab(event, 'History')" id="HistoryTab">Run history</button>
-    </div>
+    <header class="header-nav">
+      <button class="nav-button" onclick="window.location.href=window.location.origin"><i class="bi bi-cpu icon-lg"></i> CACE Web UI</button>
+      <button class="nav-button" onclick="openTab(event, 'Select')" id="SelectTab"><i class="bi bi-check-square icon-lg"></i> Select</button>
+      <button class="nav-button" onclick="openTab(event, 'Progress')" id="ProgressTab" disabled><i class="bi bi-hourglass-split icon-lg"></i>Progress</button>
+      <button class="nav-button" onclick="openTab(event, 'Results')" id="ResultsTab" disabled><i class="bi bi-clipboard-data icon-lg"></i>Results</button>
+      <button class="nav-button" onclick="openTab(event, 'History')" id="HistoryTab"><i class="bi bi-clock-history icon-lg"></i> Run history</button>
+      <button class="nav-button" onclick="openTab(event, 'Settings')" id="SettingsTab"><i class="bi bi-gear icon-lg"></i> Settings</button>
+    </header>
 
     <br />
 
-    <div id="Select" class="tabcontent">
-      <form id="sim_select">
-        <table id="select_table">
-          <thead>
-            <tr>
-              <th>Select</th>
-              <th>Param</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in data %}
-            <tr>
-              <td class="checkbox-column">
-                <input type="checkbox" name="selected_params" value="{{ row.name }}" />
-              </td>
-              <td>{{ row.name }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </form>
-      <br />
-      <details>
-        <summary>Edit Run Settings</summary>
+    <div class="content">
+      <div id="Select" class="tabcontent">
+        <form id="sim_select">
+          <table id="select_table">
+            <thead>
+              <tr>
+                <th>Select</th>
+                <th>Param</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in data %}
+              <tr>
+                <td class="checkbox-column">
+                  <input class="form-check-input" type="checkbox" name="selected_params" value="{{ row.name }}" />
+                </td>
+                <td>{{ row.name }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </form>
         <br />
+        <button type="button" class="btn btn-secondary" id="runSelected" onclick="runSimulations(all=false)" disabled>Run Selected</button>
+        <button type="button" class="btn btn-success" id="runAll" onclick="runSimulations(all=true)">Run All</button>
+      </div>
+
+      <div id="Progress" class="tabcontent"></div>
+
+      <div id="Results" class="tabcontent"></div>
+
+      <div id="History" class="tabcontent">
+        <button type="button" class="btn btn-secondary" onclick="refresh_history()"><i class="bi bi-arrow-repeat icon-lg"></i> Refresh</button>
+        <br />
+        <br />
+        <div id="comp_holder" class="comp_parent">
+          <div id="compare_left" class="comp_holder">
+            {% for i in range(runs|length) %}
+            <details id="{{ runs[i] }}_details">
+              <summary>{{ runs[i] }}</summary>
+              <div class="comp_btn_holder" id="{{ runs[i] }}_compare_holder">
+                <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')"><i class="bi bi-arrow-left-right icon-lg"></i> Compare</button>
+              </div>
+              <div class="small_table">{{ results[i] | safe }}</div>
+            </details>
+            {% endfor %}
+            <br />
+          </div>
+        </div>
+      </div>
+
+      <div id="Settings" class="tabcontent">
+        <h4>Run Settings</h4>
         <table id="settings_table">
           <tbody>
             <tr>
@@ -57,23 +87,39 @@
             </tr>
             <tr>
               <td><label for="jobs">jobs</label></td>
-              <td><input id="jobs" type="number" /></td>
+              <td><input id="jobs" type="number"" /></td>
             </tr>
             <tr>
               <td><label for="force">force</label></td>
-              <td><input id="force" type="checkbox" /></td>
+              <td>
+                <div class="form-check form-switch">
+                  <input id="force" class="form-check-input" type="checkbox" role="switch" />
+                </div>
+              </td>
             </tr>
             <tr>
               <td><label for="noplot">noplot</label></td>
-              <td><input id="noplot" type="checkbox" /></td>
+              <td>
+                <div class="form-check form-switch">
+                  <input id="noplot" class="form-check-input" type="checkbox" role="switch" />
+                </div>
+              </td>
             </tr>
             <tr>
               <td><label for="nosim">nosim</label></td>
-              <td><input id="nosim" type="checkbox" /></td>
+              <td>
+                <div class="form-check form-switch">
+                  <input id="nosim" class="form-check-input" type="checkbox" role="switch" />
+                </div>
+              </td>
             </tr>
             <tr>
               <td><label for="sequential">sequential</label></td>
-              <td><input id="sequential" type="checkbox" /></td>
+              <td>
+                <div class="form-check form-switch">
+                  <input id="sequential" class="form-check-input" type="checkbox" role="switch" />
+                </div>
+              </td>
             </tr>
             <tr>
               <td><label for="netlist_sources">netlist_source</label></td>
@@ -94,38 +140,45 @@
               </td>
               <td><input id="parallel_parameters" type="number" /></td>
             </tr>
+            <tr>
+              <td><label for="typ_thresh">Typical Threshold</label></td>
+              <td style="display: flex; gap: 15px">
+                <input id="typ_thresh" type="range" class="form-range input_range" min="0" max="100" value="10" />
+
+                <output for="typ_thresh" id="typ_thresh_val" aria-hidden="true"></output>
+
+                <script>
+                  const rangeInput = document.getElementById("typ_thresh");
+                  const rangeOutput = document.getElementById("typ_thresh_val");
+
+                  // Set initial value
+                  rangeOutput.textContent = rangeInput.value;
+
+                  rangeInput.addEventListener("input", function () {
+                    rangeOutput.textContent = this.value;
+                  });
+                </script>
+              </td>
+            </tr>
           </tbody>
         </table>
-      </details>
-      <br />
-      <button type="button" class="btn btn-secondary" id="runSelected" onclick="runSimulations(all=false)" disabled>Run Selected</button>
-      <button type="button" class="btn btn-success" id="runAll" onclick="runSimulations(all=true)">Run All</button>
-    </div>
+        <br />
 
-    <div id="Progress" class="tabcontent"></div>
+        <h4>Run playlists</h4>
+        <i style="display: block">No run playlists saved yet, create your first one in the Select tab!</i>
 
-    <div id="Results" class="tabcontent"></div>
-
-    <div id="History" class="tabcontent">
-      <button type="button" class="btn btn-secondary" onclick="refresh_history()">Refresh</button>
-      <br />
-      <br />
-      <div id="comp_holder" class="comp_parent">
-        <div id="compare_left" class="comp_holder">
-          {% for i in range(runs|length) %}
-          <details id="{{ runs[i] }}_details">
-            <summary>{{ runs[i] }}</summary>
-            <div class="comp_btn_holder" id="{{ runs[i] }}_compare_holder">
-              <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')">Compare</button>
-            </div>
-            <div class="small_table">{{ results[i] | safe }}</div>
-          </details>
-          {% endfor %}
-          <br />
+        <br />
+        <div style="display: flex">
+          <button type="button" class="btn btn-outline-primary" onclick="save_config()"><i class="bi bi-floppy2-fill icon-lg"></i> Save Config</button>
+          <button type="button" class="btn btn-outline-success" style="margin-left: 10px; display: none" id="config_saved" disabled>Saved! <i class="bi bi-check-circle icon-lg"></i></button>
         </div>
       </div>
     </div>
-
+    <footer class="footer">
+      CACE Web UI |
+      <a href="https://github.com/fossi-foundation/cace" target="_blank"><i class="bi bi-github me-1"></i>GitHub</a> |
+      <a href="https://cace.readthedocs.io/en/latest/" target="_blank"><i class="bi bi-file-earmark-text me-1"></i>Docs</a>
+    </footer>
     <script>
       // Switches which tab is visible, used by the buttons on the header
       function openTab(evt, tabName) {
@@ -137,7 +190,7 @@
           tabcontent[i].style.display = "none";
         }
 
-        tablinks = document.getElementsByClassName("tablinks");
+        tablinks = document.getElementsByClassName("nav-button");
 
         // Deactivate all tab buttons
         for (i = 0; i < tablinks.length; i++) {
@@ -146,22 +199,22 @@
 
         // Display the selected tab
         document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
+        document.getElementById(tabName + "Tab").className += " active";
       }
 
       // Sends provided data to a specific endpoint
-      async function sendData(endpoint, data) {
+      async function sendData(endpoint, data=null, method="GET") {
         // Debugging print statements
         console.log("sending");
         console.log(data);
 
         try {
           const response = await fetch(endpoint, {
-            method: "POST",
+            method: method,
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(data),
+            body: data ? JSON.stringify(data) : null
           });
 
           if (response.ok) {
@@ -180,7 +233,7 @@
       async function cancel_sims() {
         document.getElementById("cancelbtn").disabled = true;
         try {
-          const result = await sendData("/cancel_sims", {});
+          const result = await sendData("/cancel_sims");
           console.log(result.success);
         } catch (error) {
           console.error("Failed");
@@ -190,7 +243,7 @@
       // Cancels a specific simulation
       async function cancel_sim(param) {
         try {
-          const result = await sendData("/cancel_sim", { param: param });
+          const result = await sendData("/cancel_sim", { param: param }, "POST");
           console.log(result.success);
         } catch (error) {
           console.error("Failed");
@@ -200,7 +253,7 @@
       // Fetches simulation results
       async function fetch_results() {
         try {
-          const result = await sendData("/fetch_results", {});
+          const result = await sendData("/fetch_results");
           console.log(result.success);
         } catch (error) {
           console.error("Failed");
@@ -210,7 +263,7 @@
       // Fetches latest run history and result summaries
       async function refresh_history() {
         try {
-          const result = await sendData("/refresh_history", {});
+          const result = await sendData("/refresh_history");
           console.log(result.success);
         } catch (error) {
           console.error("Failed");
@@ -220,10 +273,39 @@
       // Command to end SSE stream
       async function end_stream() {
         try {
-          const result = await sendData("/end_stream", {});
+          const result = await sendData("/end_stream");
           console.log(result.success);
         } catch (error) {
           console.error("Failed");
+        }
+      }
+
+      // Send run configuration to server
+      async function save_config() {
+        try {
+          max_runs = document.getElementById("max_runs").value;
+          run_path = document.getElementById("run_path").value;
+          jobs = document.getElementById("jobs").value;
+          parallel_parameters = document.getElementById("parallel_parameters").value;
+          typ_thresh = document.getElementById("typ_thresh").value;
+
+          const result = await sendData("/save_config", {
+            max_runs: max_runs == "" ? null : max_runs,
+            run_path: run_path == "" ? null : run_path,
+            jobs: +jobs,
+            force: document.getElementById("force").checked,
+            noplot: document.getElementById("noplot").checked,
+            nosim: document.getElementById("nosim").checked,
+            sequential: document.getElementById("sequential").checked,
+            netlist_source: document.getElementById("netlist_source").value,
+            parallel_parameters: +parallel_parameters,
+            typ_thresh: +typ_thresh,
+          }, "POST");
+          console.log(result.success);
+          showTimedNotification("config_saved", 2000);
+        } catch (error) {
+          console.error("Failed");
+          console.error(error);
         }
       }
 
@@ -248,18 +330,7 @@
           document.getElementById("runAll").disabled = true;
           document.getElementById("runSelected").disabled = true;
 
-          sendData("/runsim", {
-            selected_params: selected_params,
-            max_runs: document.getElementById("max_runs").value,
-            run_path: document.getElementById("run_path").value,
-            jobs: document.getElementById("jobs").value,
-            force: document.getElementById("force").checked,
-            noplot: document.getElementById("noplot").checked,
-            nosim: document.getElementById("nosim").checked,
-            sequential: document.getElementById("sequential").checked,
-            netlist_source: document.getElementById("netlist_source").value,
-            parallel_parameters: document.getElementById("parallel_parameters").value,
-          });
+          sendData("/runsim", { selected_params: selected_params }, "POST");
         }
       }
 
@@ -297,7 +368,6 @@
           const comp_left = document.getElementById("compare_left");
           const comp_right = comp_left.cloneNode(true);
           comp_right.id = "compare_right";
-
 
           // Select everything but the selected entry in the left pane
           let cleft_details = comp_left.getElementsByTagName("details");
@@ -366,13 +436,17 @@
       // Callback from the server to start a progress bar
       function start(task, data) {
         let outputDiv = document.getElementById(data.param);
-        outputDiv.max = data.steps;
+        outputDiv.ariaValueMax = data.steps;
       }
 
       // Callback from the server to increment the progress bar by one
       function step(task, data) {
         let outputDiv = document.getElementById(data.param);
-        outputDiv.value++;
+        if (+outputDiv.ariaValueNow < +outputDiv.ariaValueMax) {
+          outputDiv.ariaValueNow++;
+          outputDiv.firstElementChild.style.width = Math.round((outputDiv.ariaValueNow / outputDiv.ariaValueMax) * 100) + "%";
+          outputDiv.firstElementChild.innerHTML = outputDiv.ariaValueNow + " / " + outputDiv.ariaValueMax;
+        }
       }
 
       // Callback from the server when a simulation has been canceled
@@ -389,6 +463,37 @@
           fetch_results();
         }
 
+        let progressBar = document.getElementById(data.param).firstElementChild;
+        progressBar.classList.remove("progress-bar-animated");
+
+        switch (data.status) {
+          case "UNKNOWN":
+            progressBar.classList.add("bg-danger");
+            break;
+
+          case "ERROR":
+            progressBar.classList.add("bg-danger");
+            break;
+
+          case "SUCCESS":
+            progressBar.classList.add("bg-success");
+            break;
+
+          case "FAILURE":
+            progressBar.classList.add("bg-danger");
+            break;
+
+          case "SKIPPED":
+            progressBar.classList.add("bg-warning");
+            break;
+
+          case "CANCELED":
+            progressBar.classList.add("bg-warning");
+            break;
+        }
+
+        document.getElementById(data.param + "cancelbtn").classList.remove("btn-outline-danger");
+        document.getElementById(data.param + "cancelbtn").classList.add("btn-outline-secondary");
         document.getElementById(data.param + "cancelbtn").disabled = true;
       }
 
@@ -406,7 +511,7 @@
         contentDiv.innerHTML += data.plots;
 
         document.getElementById("Progress").innerHTML += data.summary;
-        
+
         // We have to run the JS code for the mpld3 plots to make them appear
         const scripts = contentDiv.getElementsByTagName("script");
         for (let script of scripts) {
@@ -423,6 +528,19 @@
         document.getElementById("History").innerHTML = data.html;
       }
 
+      // Enables and then hides the element with elementId for a set duration
+      function showTimedNotification(elementId, duration = 3000) {
+        const element = document.getElementById(elementId);
+
+        // Show the element
+        element.style.display = "block";
+
+        // Hide it after duration
+        setTimeout(() => {
+          element.style.display = "none";
+        }, duration);
+      }
+
       // Handler for incoming messages
       eventSource.onmessage = function (event) {
         let data = JSON.parse(event.data);
@@ -435,31 +553,24 @@
           case "close":
             close(task, data);
             break;
-
           case "start":
             start(task, data);
             break;
-
           case "step":
             step(task, data);
             break;
-
           case "cancel":
             cancel(task, data);
             break;
-
           case "end":
             end(task, data);
             break;
-
           case "progress":
             progress(task, data);
             break;
-
           case "results":
             results(task, data);
             break;
-
           case "history":
             history(task, data);
             break;
@@ -475,6 +586,18 @@
       window.onbeforeunload = function () {
         end_stream();
       };
+
+      // Initialize run settings table
+      const config = sendData("/fetch_config");
+      document.getElementById("max_runs").value = config.max_runs;
+      document.getElementById("jobs").value = config.jobs;
+      document.getElementById("force").checked = config.force;
+      document.getElementById("noplot").checked = config.noplot;
+      document.getElementById("nosim").checked = config.nosim;
+      document.getElementById("sequential").checked = config.sequential;
+      document.getElementById("netlist_source").value = config.netlist_source;
+      document.getElementById("parallel_parameters").value = config.parallel_parameters;
+      document.getElementById("typ_thresh").value = config.typ_thresh;
     </script>
   </body>
 </html>
