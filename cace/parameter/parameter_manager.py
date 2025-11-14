@@ -212,7 +212,9 @@ class ParameterManager:
                         if fileext == '.yaml':
                             if basename == dirname:
                                 info(f"Loading datasheet from '{subitemref}'.")
-                                return self.load_datasheet(subitemref, init_run_dir)
+                                return self.load_datasheet(
+                                    subitemref, init_run_dir
+                                )
 
         info('No datasheet found in local project (YAML file).')
         return 1
@@ -248,13 +250,19 @@ class ParameterManager:
         """Return the datasheet"""
         return self.datasheet
 
-    def summarize_datasheet(self):
-        return markdown_summary(
+    def summarize_datasheet(self, save=False):
+        md_sum = markdown_summary(
             self.datasheet,
             self.runtime_options,
             self.results,
             self.result_types,
         )
+
+        if save:
+            with open(self.run_dir + '/summary.md', 'w') as f:
+                print(md_sum, file=f)
+
+        return md_sum
 
     def generate_documentation(self):
         if 'documentation' in self.datasheet['paths']:
