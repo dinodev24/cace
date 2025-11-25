@@ -27,30 +27,54 @@ debug = False
 app = Flask(__name__, template_folder='web', static_folder='web/static')
 
 
-# Returns the home page with all parameters and previous runs
 @app.route('/')
 def homepage():
-    # Restores console output
     sys.stdout = sys.__stdout__
-
-    # Initialize pnames and parameter_manager
     pnames = parameter_manager.get_all_pnames()
     parameter_manager.results = {}
     parameter_manager.result_types = {}
     data = [{'name': pname} for pname in pnames]
 
-    # Collects all previous runs
-    runs = next(os.walk(datasheet['paths']['runs']))[1]
-    results = []
+    config = None
 
-    # Parse the markdown summary and store it in the results list
+    if os.path.exists('.cace_config.json'):
+        with open('.cace_config.json') as f:
+            config = json.load(f)
+    else:
+        with open('.cace_config.json', 'a') as f:
+            f.write('{')
+            f.write('    "max_runs" : null,')
+            f.write('    "run_path" : null,')
+            f.write(f'    "jobs" : {os.cpu_count()},')
+            f.write('    "force" : false,')
+            f.write('    "noplot" : false,')
+            f.write('    "nosim" : false,')
+            f.write('    "sequential" : false,')
+            f.write('    "netlist_source" : "best",')
+            f.write('    "parallel_parameters" : 4,')
+            f.write('    "typ_thresh" : 10')
+            f.write('}')
+
+        with open('.cace_config.json') as f:
+            config = json.load(f)
+
+    load_config(config)
+
+    runs = next(os.walk(datasheet['paths']['runs']))[1]
+
+    results = []
     for run in runs:
         result = []
 
-        with open('runs/' + run + '/summary.md', 'r') as f:
-            content = f.read()
+        summary_lines = read_summary_lines(run)
 
-        summary_lines = content.split('\n')[7:-2]
+        if summary_lines == None:
+            results.append(
+                DANGER_ALERT_TEMPLATE.render(
+                    text='ERROR: summary.md not found for this run!'
+                )
+            )
+            continue
 
         for row in summary_lines:
             row = row.split('|')
@@ -80,76 +104,14 @@ def homepage():
         data=data,
         runs=runs,
         results=results,
+        config=json.dumps(config),
     )
 
 
-# Responsible for sending the SSEs back to the client
-def generate_sse():
-
-    while True:
-        tq_item = task_queue.get()
-
-        # NOTE: This is not for ending the SSE stream. Instead, it is called when a simulation ends
-        # Handles the matplotlib plots
-        if tq_item['task'] == 'end':
-            for i in parameter_manager.running_threads:
-                if i.param == tq_item['param']:
-                    tq_item['status'] = i.result_type.name
-                    if len(i.plots_dict) > 0:
-                        figures[i.pname] = i.plots_dict
-        # This is the one that ends the SSE stream
-        elif tq_item['task'] == 'end_stream':
-            if debug:
-                print('ending sse stream')
-            return
-
-        # Convert the param key to the real param name
-        if 'param' in tq_item:
-            tq_item['param'] = list(datasheet['parameters'].keys())[
-                list(datasheet['parameters'].values()).index(tq_item['param'])
-            ]
-
-        if debug:
-            print(tq_item)
-
-        yield f'data: {json.dumps(tq_item)}\n\n'
-
-
-# Called by the client to start the SSE stream
-@app.route('/stream')
-def stream():
-    if debug:
-        print('starting sse stream')
-
-    # We return the generator which stays alive until the end_stream task is queued
-    return Response(generate_sse(), content_type='text/event-stream')
-
-
-# Starts the requested simulations
-@app.route('/runsim', methods=['POST'])
-def runsim():
-    rd = json.loads(request.get_data())
-    if debug:
-        print(rd)
-
-    # Set default values for configuration options
-    if rd['max_runs'] == '':
-        rd['max_runs'] = None
-    if rd['run_path'] == '':
-        rd['run_path'] = None
-    if rd['jobs'] == '':
-        rd['jobs'] = os.cpu_count()
-    if rd['netlist_source'] == '':
-        rd['netlist_source'] = 'best'
-    if rd['parallel_parameters'] == '':
-        rd['parallel_parameters'] = 4
-
-    params = rd['selected_params']
-
-    # Input the configuration to the parameter manager
+def load_config(rd):
     parameter_manager.max_runs = rd['max_runs']
     parameter_manager.run_path = rd['run_path']
-    parameter_manager.max_jobs = rd['jobs']
+    parameter_manager.max_jobs = int(rd['jobs'])
     parameter_manager.set_runtime_options('force', rd['force'])
     parameter_manager.set_runtime_options('noplot', rd['noplot'])
     parameter_manager.set_runtime_options('nosim', rd['nosim'])
@@ -158,13 +120,47 @@ def runsim():
         'netlist_source', rd['netlist_source']
     )
     parameter_manager.set_runtime_options(
-        'parallel_parameters', rd['parallel_parameters']
+        'parallel_parameters', int(rd['parallel_parameters'])
     )
 
-    # Prepare the directory that stores the run results
-    parameter_manager.prepare_run_dir()
 
-    # Queue, not run, the selected parameters and set up the callbacks
+def generate_sse():
+    while True:
+        tq_item = task_queue.get()
+
+        if tq_item['task'] == 'end':
+            for i in parameter_manager.running_threads:
+                if i.param == tq_item['param']:
+                    tq_item['status'] = i.result_type.name
+                    if len(i.plots_dict) > 0:
+                        figures[i.pname] = i.plots_dict
+        elif tq_item['task'] == 'end_stream':
+            if debug:
+                print('ending sse stream')
+            return
+        if 'param' in tq_item:
+            tq_item['param'] = list(datasheet['parameters'].keys())[
+                list(datasheet['parameters'].values()).index(tq_item['param'])
+            ]
+        if debug:
+            print(tq_item)
+        yield f'data: {json.dumps(tq_item)}\n\n'
+
+
+@app.route('/stream')
+def stream():
+    if debug:
+        print('starting sse stream')
+    return Response(generate_sse(), content_type='text/event-stream')
+
+
+@app.route('/runsim', methods=['POST'])
+def runsim():
+    rd = json.loads(request.get_data())
+
+    params = rd['selected_params']
+
+    parameter_manager.prepare_run_dir()
     for pname in params:
         parameter_manager.queue_parameter(
             pname=pname,
@@ -188,18 +184,13 @@ def runsim():
             ),
         )
 
-    # Finally run the parameters
     parameter_manager.run_parameters_async()
-
-    # Send the progress page's content to the client
     task_queue.put(
         {'task': 'progress', 'html': PROGRESS_TEMPLATE.render(params=params)}
     )
-
     return json.dumps({'success': True})
 
 
-# Cancels a specific simulation
 @app.route('/cancel_sim', methods=['POST'])
 def cancel_sim():
     data = request.get_json()
@@ -210,28 +201,24 @@ def cancel_sim():
     return json.dumps({'success': True})
 
 
-# Cancels all simulations
-@app.route('/cancel_sims', methods=['POST'])
+@app.route('/cancel_sims')
 def cancel_sims():
     parameter_manager.cancel_parameters()
     return json.dumps({'success': True})
 
 
-# Ends the SSE stream
-@app.route('/end_stream', methods=['POST'])
+@app.route('/end_stream')
 def end_stream():
     task_queue.put({'task': 'end_stream'})
     return json.dumps({'success': True})
 
 
-# Sends the run results to the client
-@app.route('/fetch_results', methods=['POST'])
+@app.route('/fetch_results')
 def fetch_results():
     parameter_manager.join_parameters()
     result = []
     divs = []
 
-    # Get the MarkDown summary
     summary_lines = parameter_manager.summarize_datasheet(save=True).split(
         '\n'
     )[7:-2]
@@ -239,8 +226,6 @@ def fetch_results():
         param: len(list(datasheet['parameters'][param]['spec'].keys()))
         for param in parameter_manager.get_all_pnames()
     }
-
-    # Parse each line of summary and collect it
     for param in parameter_manager.get_result_types().keys():
         total = 0
         for i in parameter_manager.get_all_pnames():
@@ -265,8 +250,6 @@ def fetch_results():
             total += lengths[i]
 
     divs.append('<br>')
-
-    # Render the matplotlib plots using mpld3
     for pname in figures.keys():
         divs.append(
             f'<details>\n<summary>Figures for {paramkey_paramdisplay[pname]}</summary>'
@@ -282,11 +265,8 @@ def fetch_results():
             )
 
         divs.append('</details>\n<br>')
-
     if debug:
         print(divs)
-
-    # Send the results to the client
     task_queue.put(
         {
             'task': 'results',
@@ -297,22 +277,24 @@ def fetch_results():
     return json.dumps({'success': True})
 
 
-# Sends the latest list of runs and their summaries to the client
-@app.route('/refresh_history', methods=['POST'])
+@app.route('/refresh_history')
 def refresh_history():
-    # List all previous runs
     runs = next(os.walk(datasheet['paths']['runs']))[1]
 
     results = []
     for run in runs:
         result = []
 
-        with open('runs/' + run + '/summary.md', 'r') as f:
-            content = f.read()
+        summary_lines = read_summary_lines(run)
 
-        summary_lines = content.split('\n')[7:-2]
+        if summary_lines == None:
+            results.append(
+                DANGER_ALERT_TEMPLATE.render(
+                    text='ERROR: summary.md not found for this run!'
+                )
+            )
+            continue
 
-        # Parse each line of the summary
         for row in summary_lines:
             row = row.split('|')
 
@@ -336,7 +318,6 @@ def refresh_history():
 
         results.append(RESULTS_SUMMARY_TEMPLATE.render(data=result))
 
-    # Send all the summaries to the client
     task_queue.put(
         {
             'task': 'history',
@@ -346,7 +327,34 @@ def refresh_history():
     return json.dumps({'success': True})
 
 
-# Called to initialize the server
+def read_summary_lines(run):
+    try:
+        with open('runs/' + run + '/summary.md', 'r') as f:
+            content = f.read()
+
+        return content.split('\n')[7:-2]
+    except FileNotFoundError:
+        return None
+
+
+@app.route('/save_config', methods=['POST'])
+def save_config():
+    data = request.get_json()
+    with open('.cace_config.json', 'w') as f:
+        f.write(json.dumps(data))
+
+    load_config(data)
+    return json.dumps({'success': True})
+
+
+@app.route('/fetch_config')
+def fetch_config():
+    with open('.cace_config.json') as f:
+        config = json.load(f)
+
+    return json.dumps(config)
+
+
 def web():
     try:
         host = 'localhost'
@@ -355,14 +363,12 @@ def web():
             'Open the CACE web interface at: http://' + host + ':' + str(port)
         )
 
-        # Stop console output to prevent unnecessary debug info from getting printed
         sys.stdout = open(os.devnull, 'w')
         debug = '--debug' in sys.argv
         for prog in ['werkzeug', '__cace__']:
             logger = logging.getLogger(prog)
             logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
-        # Run the server
-        app.run(debug=debug, host=host, port=port, use_reloader=False)
+        app.run(debug=debug, host=host, port=port, use_reloader=debug)
     finally:
         task_queue.put({'task': 'close'})
