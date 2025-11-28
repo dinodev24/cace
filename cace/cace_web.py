@@ -39,18 +39,48 @@ def homepage():
     parameter_manager.result_types = {}
     data = [{'name': pname} for pname in pnames]
 
-    # Collects all previous runs
+    config = None
+
+    if os.path.exists('.cace_config.json'):
+        with open('.cace_config.json') as f:
+            config = json.load(f)
+    else:
+        with open('.cace_config.json', 'a') as f:
+            f.write('{')
+            f.write('    "max_runs" : null,')
+            f.write('    "run_path" : null,')
+            f.write(f'    "jobs" : {os.cpu_count()},')
+            f.write('    "force" : false,')
+            f.write('    "noplot" : false,')
+            f.write('    "nosim" : false,')
+            f.write('    "sequential" : false,')
+            f.write('    "netlist_source" : "best",')
+            f.write('    "parallel_parameters" : 4,')
+            f.write('    "typ_thresh" : 10')
+            f.write('}')
+
+        with open('.cace_config.json') as f:
+            config = json.load(f)
+
+    load_config(config)
+
     runs = next(os.walk(datasheet['paths']['runs']))[1]
+
     results = []
 
     # Parse the markdown summary and store it in the results list
     for run in runs:
         result = []
 
-        with open('runs/' + run + '/summary.md', 'r') as f:
-            content = f.read()
+        summary_lines = read_summary_lines(run)
 
-        summary_lines = content.split('\n')[7:-2]
+        if summary_lines == None:
+            results.append(
+                DANGER_ALERT_TEMPLATE.render(
+                    text='ERROR: summary.md not found for this run!'
+                )
+            )
+            continue
 
         for row in summary_lines:
             row = row.split('|')
@@ -80,6 +110,23 @@ def homepage():
         data=data,
         runs=runs,
         results=results,
+        config=json.dumps(config),
+    )
+
+
+def load_config(rd):
+    parameter_manager.max_runs = rd['max_runs']
+    parameter_manager.run_path = rd['run_path']
+    parameter_manager.max_jobs = int(rd['jobs'])
+    parameter_manager.set_runtime_options('force', rd['force'])
+    parameter_manager.set_runtime_options('noplot', rd['noplot'])
+    parameter_manager.set_runtime_options('nosim', rd['nosim'])
+    parameter_manager.set_runtime_options('sequential', rd['sequential'])
+    parameter_manager.set_runtime_options(
+        'netlist_source', rd['netlist_source']
+    )
+    parameter_manager.set_runtime_options(
+        'parallel_parameters', int(rd['parallel_parameters'])
     )
 
 
@@ -129,37 +176,8 @@ def stream():
 @app.route('/runsim', methods=['POST'])
 def runsim():
     rd = json.loads(request.get_data())
-    if debug:
-        print(rd)
-
-    # Set default values for configuration options
-    if rd['max_runs'] == '':
-        rd['max_runs'] = None
-    if rd['run_path'] == '':
-        rd['run_path'] = None
-    if rd['jobs'] == '':
-        rd['jobs'] = os.cpu_count()
-    if rd['netlist_source'] == '':
-        rd['netlist_source'] = 'best'
-    if rd['parallel_parameters'] == '':
-        rd['parallel_parameters'] = 4
 
     params = rd['selected_params']
-
-    # Input the configuration to the parameter manager
-    parameter_manager.max_runs = rd['max_runs']
-    parameter_manager.run_path = rd['run_path']
-    parameter_manager.max_jobs = rd['jobs']
-    parameter_manager.set_runtime_options('force', rd['force'])
-    parameter_manager.set_runtime_options('noplot', rd['noplot'])
-    parameter_manager.set_runtime_options('nosim', rd['nosim'])
-    parameter_manager.set_runtime_options('sequential', rd['sequential'])
-    parameter_manager.set_runtime_options(
-        'netlist_source', rd['netlist_source']
-    )
-    parameter_manager.set_runtime_options(
-        'parallel_parameters', rd['parallel_parameters']
-    )
 
     # Prepare the directory that stores the run results
     parameter_manager.prepare_run_dir()
@@ -211,21 +229,21 @@ def cancel_sim():
 
 
 # Cancels all simulations
-@app.route('/cancel_sims', methods=['POST'])
+@app.route('/cancel_sims')
 def cancel_sims():
     parameter_manager.cancel_parameters()
     return json.dumps({'success': True})
 
 
 # Ends the SSE stream
-@app.route('/end_stream', methods=['POST'])
+@app.route('/end_stream')
 def end_stream():
     task_queue.put({'task': 'end_stream'})
     return json.dumps({'success': True})
 
 
 # Sends the run results to the client
-@app.route('/fetch_results', methods=['POST'])
+@app.route('/fetch_results')
 def fetch_results():
     parameter_manager.join_parameters()
     result = []
@@ -298,7 +316,7 @@ def fetch_results():
 
 
 # Sends the latest list of runs and their summaries to the client
-@app.route('/refresh_history', methods=['POST'])
+@app.route('/refresh_history')
 def refresh_history():
     # List all previous runs
     runs = next(os.walk(datasheet['paths']['runs']))[1]
@@ -307,10 +325,15 @@ def refresh_history():
     for run in runs:
         result = []
 
-        with open('runs/' + run + '/summary.md', 'r') as f:
-            content = f.read()
+        summary_lines = read_summary_lines(run)
 
-        summary_lines = content.split('\n')[7:-2]
+        if summary_lines == None:
+            results.append(
+                DANGER_ALERT_TEMPLATE.render(
+                    text='ERROR: summary.md not found for this run!'
+                )
+            )
+            continue
 
         # Parse each line of the summary
         for row in summary_lines:
@@ -346,7 +369,34 @@ def refresh_history():
     return json.dumps({'success': True})
 
 
-# Called to initialize the server
+def read_summary_lines(run):
+    try:
+        with open('runs/' + run + '/summary.md', 'r') as f:
+            content = f.read()
+
+        return content.split('\n')[7:-2]
+    except FileNotFoundError:
+        return None
+
+
+@app.route('/save_config', methods=['POST'])
+def save_config():
+    data = request.get_json()
+    with open('.cace_config.json', 'w') as f:
+        f.write(json.dumps(data))
+
+    load_config(data)
+    return json.dumps({'success': True})
+
+
+@app.route('/fetch_config')
+def fetch_config():
+    with open('.cace_config.json') as f:
+        config = json.load(f)
+
+    return json.dumps(config)
+
+
 def web():
     try:
         host = 'localhost'
@@ -363,6 +413,6 @@ def web():
             logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
         # Run the server
-        app.run(debug=debug, host=host, port=port, use_reloader=False)
+        app.run(debug=debug, host=host, port=port, use_reloader=debug)
     finally:
         task_queue.put({'task': 'close'})
