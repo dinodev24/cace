@@ -70,6 +70,7 @@ class ParameterManager:
         self.datasheet = datasheet
         self.max_runs = max_runs
         self.run_path = run_path
+        self.dspath = None
 
         self.worker_thread = None
 
@@ -178,6 +179,7 @@ class ParameterManager:
         if init_run_dir:
             self.prepare_run_dir()
 
+        self.dspath = os.path.abspath(datasheet_path)
         return 0
 
     def find_datasheet(self, search_dir, init_run_dir=True):

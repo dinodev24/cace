@@ -68,6 +68,11 @@ header {
   color: #000;
 }
 
+.nav-button:hover:not(:disabled) .nav-btn-content {
+  transform: scale(1.1);
+  display: inline-block;
+}
+
 .nav-button.active {
   border-bottom-color: #007bff;
   color: #007bff;
@@ -101,29 +106,29 @@ header {
   margin-left: auto;
 }
 
-.comp_btn_holder {
+.comp-btn-holder {
   display: flex;
 }
 
-.small_table table {
+.small-table table {
   font-size: 12px;
 }
 
-.comp_holder {
+.comp-holder {
   width: 850px;
 }
 
-.comp_parent {
+.comp-parent {
   display: flex;
   gap: 20px;
 }
 
-.input_range {
+.input-range {
   width: 300px;
 }
 
 .icon-lg {
-  transform: scale(1.5);
+  transform: scale(1.25);
   display: inline-block;
   margin-left: 10px;
   margin-right: 10px;
@@ -131,4 +136,32 @@ header {
 
 .hidden {
   display: none;
+}
+
+.playlist-sidebar {
+  padding: 10px;
+}
+
+.playlist-scroll {
+  height: 350px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) var(--bg-color);
+}
+
+.playlist-item {
+  position: absolute;
+}
+
+.playlist-item:hover .btn {
+  display: block;
+}
+
+.playlist-item .btn {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
 }

@@ -9,44 +9,78 @@
     <script src="static/js/mpld3.v0.5.10.min.js"></script>
     <script src="static/js/bootstrap.bundle.min.js"></script>
     <title>CACE Web Interface</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'> <path fill='%23FFC83D' d='M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641z'/> </svg>" />
   </head>
   <body>
     <header class="header-nav">
-      <button class="nav-button" onclick="window.location.href=window.location.origin"><i class="bi bi-cpu icon-lg"></i> CACE Web UI</button>
-      <button class="nav-button" onclick="openTab(event, 'Select')" id="SelectTab"><i class="bi bi-check-square icon-lg"></i> Select</button>
-      <button class="nav-button" onclick="openTab(event, 'Progress')" id="ProgressTab" disabled><i class="bi bi-hourglass-split icon-lg"></i>Progress</button>
-      <button class="nav-button" onclick="openTab(event, 'Results')" id="ResultsTab" disabled><i class="bi bi-clipboard-data icon-lg"></i>Results</button>
-      <button class="nav-button" onclick="openTab(event, 'History')" id="HistoryTab"><i class="bi bi-clock-history icon-lg"></i> Run history</button>
-      <button class="nav-button" onclick="openTab(event, 'Settings')" id="SettingsTab"><i class="bi bi-gear icon-lg"></i> Settings</button>
+      <button class="nav-button" onclick="window.location.href=window.location.origin">
+        <span class="nav-btn-content"> <i class="bi bi-cpu icon-lg"></i> CACE Web UI </span>
+      </button>
+      <button class="nav-button" onclick="openTab(event, 'Select')" id="SelectTab">
+        <span class="nav-btn-content"> <i class="bi bi-check-square icon-lg"></i> Select </span>
+      </button>
+      <button class="nav-button" onclick="openTab(event, 'Progress')" id="ProgressTab" disabled>
+        <span class="nav-btn-content"> <i class="bi bi-hourglass-split icon-lg"></i>Progress </span>
+      </button>
+      <button class="nav-button" onclick="openTab(event, 'Results')" id="ResultsTab" disabled>
+        <span class="nav-btn-content"> <i class="bi bi-clipboard-data icon-lg"></i>Results </span>
+      </button>
+      <button class="nav-button" onclick="openTab(event, 'History')" id="HistoryTab">
+        <span class="nav-btn-content"> <i class="bi bi-clock-history icon-lg"></i> Run history </span>
+      </button>
+      <button class="nav-button" onclick="openTab(event, 'Settings')" id="SettingsTab">
+        <span class="nav-btn-content"> <i class="bi bi-gear icon-lg"></i> Settings </span>
+      </button>
     </header>
 
     <br />
 
     <div class="content">
       <div id="Select" class="tabcontent">
-        <form id="sim_select">
-          <table id="select_table">
-            <thead>
-              <tr>
-                <th>Select</th>
-                <th>Param</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in data %}
-              <tr>
-                <td class="checkbox-column">
-                  <input class="form-check-input" type="checkbox" name="selected_params" value="{{ row.name }}" />
-                </td>
-                <td>{{ row.name }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </form>
-        <br />
-        <button type="button" class="btn btn-secondary" id="runSelected" onclick="runSimulations(all=false)" disabled>Run Selected</button>
-        <button type="button" class="btn btn-success" id="runAll" onclick="runSimulations(all=true)">Run All</button>
+        <div style="display: flex; gap: 20px">
+          <div>
+            <form id="sim_select">
+              <table id="select_table">
+                <thead>
+                  <tr>
+                    <th>Select</th>
+                    <th>Param</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in data %}
+                  <tr>
+                    <td class="checkbox-column">
+                      <input class="form-check-input" type="checkbox" name="selected_params" value="{{ row.name }}" />
+                    </td>
+                    <td>{{ row.name }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </form>
+            <br />
+            <button type="button" class="btn btn-secondary" id="runSelected" onclick="runSimulations(all=false)" disabled>Run</button>
+            <button type="button" class="btn btn-success" id="runAll" onclick="runSimulations(all=true)">Run All</button>
+          </div>
+          <!--
+          <div style="height: 500px; background-color: #f2f2f2; width: 300px">
+            <div class="playlist-sidebar">
+              <h4>Run Playlists</h4>
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" placeholder="Playlist Name . . ." aria-describedby="button-addon2" />
+                <button class="btn btn-primary" type="button" id="button-addon2">Save</button>
+              </div>
+              <h4>Saved Playlists</h4>
+              <div class="playlist-scroll">
+                <ul class="list-group" id="playlist-scroll">
+                  <i>No playlists saved yet.</i>
+                </ul>
+              </div>
+            </div>
+          </div>
+          -->
+        </div>
       </div>
 
       <div id="Progress" class="tabcontent"></div>
@@ -57,15 +91,15 @@
         <button type="button" class="btn btn-secondary" onclick="refresh_history()"><i class="bi bi-arrow-repeat icon-lg"></i> Refresh</button>
         <br />
         <br />
-        <div id="comp_holder" class="comp_parent">
-          <div id="compare_left" class="comp_holder">
+        <div id="comp-holder" class="comp-parent">
+          <div id="compare_left" class="comp-holder">
             {% for i in range(runs|length) %}
             <details id="{{ runs[i] }}_details">
               <summary>{{ runs[i] }}</summary>
-              <div class="comp_btn_holder" id="{{ runs[i] }}_compare_holder">
+              <div class="comp-btn-holder" id="{{ runs[i] }}_compare_holder">
                 <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')"><i class="bi bi-arrow-left-right icon-lg"></i> Compare</button>
               </div>
-              <div class="small_table">{{ results[i] | safe }}</div>
+              <div class="small-table">{{ results[i] | safe }}</div>
             </details>
             {% endfor %}
             <br />
@@ -144,7 +178,7 @@
             <tr>
               <td><label for="typ_thresh">Typical Threshold</label></td>
               <td style="display: flex; gap: 15px">
-                <input id="typ_thresh" type="range" class="form-range input_range" min="0" max="100" value="10" />
+                <input id="typ_thresh" type="range" class="form-range input-range" min="0" max="100" value="10" />
 
                 <output for="typ_thresh" id="typ_thresh_val" aria-hidden="true"></output>
 
@@ -172,13 +206,12 @@
         -->
         <div style="display: flex">
           <button type="button" class="btn btn-outline-primary" onclick="save_config()"><i class="bi bi-floppy2-fill icon-lg"></i> Save Config</button>
-          <button type="button" class="btn btn-outline-success" style="margin-left: 10px; display: none" id="config_saved" disabled>Saved! <i class="bi bi-check-circle icon-lg"></i></button>
+          <button type="button" class="btn btn-outline-success" style="margin-left: 10px; display: none" id="config_saved" disabled><i class="bi bi-check-circle icon-lg"></i> Saved!</button>
         </div>
       </div>
     </div>
     <footer class="footer">
-      CACE Web UI
-      &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+      CACE Web UI &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
       <a href="https://github.com/fossi-foundation/cace" target="_blank"><i class="bi bi-github me-1"></i>GitHub</a>
       &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
       <a href="https://cace.readthedocs.io/en/latest/" target="_blank"><i class="bi bi-file-earmark-text me-1"></i>Docs</a>
@@ -411,7 +444,7 @@
           }
 
           // Insert the right pane. NOTE: We do this last to make sure element IDs are not doubled
-          document.getElementById("comp_holder").appendChild(comp_right);
+          document.getElementById("comp-holder").appendChild(comp_right);
         }
       }
 
@@ -465,9 +498,10 @@
       // Callback from the server as soon as a simulation has finished
       function end(task, data) {
         let outputDiv = document.getElementById("overall_pb");
-        outputDiv.value++;
+        outputDiv.ariaValueNow++;
+        outputDiv.firstElementChild.style.width = Math.round((outputDiv.ariaValueNow / outputDiv.ariaValueMax) * 100) + "%";
 
-        if (outputDiv.value == outputDiv.max) {
+        if (outputDiv.ariaValueNow == outputDiv.ariaValueMax) {
           fetch_results();
         }
 
@@ -534,6 +568,11 @@
       // Displays the new run history tab content, this is only called after a refresh
       function history(task, data) {
         document.getElementById("History").innerHTML = data.html;
+      }
+
+      // Renders HTML templates just like jinja2 templates
+      function render(template, data) {
+        return template.replace(/\${(\w+)}/g, (match, key) => data[key] || "");
       }
 
       // Enables and then hides the element with elementId for a set duration
@@ -605,7 +644,16 @@
       document.getElementById("sequential").checked = config.sequential;
       document.getElementById("netlist_source").value = config.netlist_source;
       document.getElementById("parallel_parameters").value = config.parallel_parameters;
-      document.getElementById("typ_thresh").value = config.typ_thresh;
+      // document.getElementById("typ_thresh").value = config.typ_thresh;
+
+      const playlistTemplate = `
+        <li class="list-group-item">
+          <span class="playlist-name">\${name}</span>
+          <button class="btn" data-id="\${id}">
+            <i class="bi bi-trash"></i>
+          </button>
+        </li>
+      `;
     </script>
   </body>
 </html>

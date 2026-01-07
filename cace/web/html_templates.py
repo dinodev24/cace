@@ -1,5 +1,6 @@
 import jinja2
 
+# Template for the table with progress bars
 PROGRESS_TEMPLATE = jinja2.Template(
     """
 <table id="progress_table">
@@ -15,7 +16,7 @@ PROGRESS_TEMPLATE = jinja2.Template(
     <tr>
       <td>{{ param }}</td>
       <td>
-        <div class="progress" id="{{ param }}" role="progressbar" aria-valuenow="0" aria-valuemax="0">
+        <div class="progress" id="{{ param }}" role="progressbar" aria-valuenow="0" aria-valuemax="0" style="width: 300px;">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
         </div>
       </td>
@@ -27,7 +28,9 @@ PROGRESS_TEMPLATE = jinja2.Template(
     <tr>
       <td>Overall Progress</td>
       <td>
-        <progress id="overall_pb" value="0" max="{{ params | length }}"></progress>
+        <div class="progress" id="overall_pb" role="progressbar" aria-valuenow="0" aria-valuemax="{{ params | length }}" style="width: 300px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+        </div>
       </td>
     </tr>
   </tbody>
@@ -40,6 +43,7 @@ PROGRESS_TEMPLATE = jinja2.Template(
 """
 )
 
+# Template for the table showing run results
 RESULTS_SUMMARY_TEMPLATE = jinja2.Template(
     """
 <table>
@@ -77,6 +81,7 @@ RESULTS_SUMMARY_TEMPLATE = jinja2.Template(
 """
 )
 
+# Template for the mpld3 plots
 RESULTS_PLOTS_TEMPLATE = jinja2.Template(
     """
 {% for div in divs %}
@@ -85,20 +90,21 @@ RESULTS_PLOTS_TEMPLATE = jinja2.Template(
 """
 )
 
+# Template for the history entries
 HISTORY_TEMPLATE = jinja2.Template(
     """
 <button type="button" class="btn btn-secondary" onclick="refresh_history()"><i class="bi bi-arrow-repeat icon-lg"></i>Refresh</button>
 <br />
 <br />
-<div id="comp_holder" class="comp_parent">
-  <div id="compare_left" class="comp_holder">
+<div id="comp-holder" class="comp-parent">
+  <div id="compare_left" class="comp-holder">
     {% for i in range(runs|length) %}
     <details id="{{ runs[i] }}_details">
       <summary>{{ runs[i] }}</summary>
-      <div class="comp_btn_holder" id="{{ runs[i] }}_compare_holder">
+      <div class="comp-btn-holder" id="{{ runs[i] }}_compare_holder">
         <button type="button" class="btn btn-primary right-align" onclick="compare('{{ runs[i] }}')"><i class="bi bi-arrow-left-right icon-lg"></i> Compare</button>
       </div>
-      <div class="small_table">{{ results[i] | safe }}</div>
+      <div class="small-table">{{ results[i] | safe }}</div>
     </details>
     {% endfor %}
     <br />
@@ -107,6 +113,7 @@ HISTORY_TEMPLATE = jinja2.Template(
 """
 )
 
+# Generic template for a danger warning
 DANGER_ALERT_TEMPLATE = jinja2.Template(
     """
 <div class="alert alert-danger" role="alert">
